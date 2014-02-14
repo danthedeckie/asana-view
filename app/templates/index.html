@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <title>{% block title %}TODO: TITLE{% endblock %}</title>
+    {% block htmlhead %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    {% endblock %}
+    <style>
+    body {
+        background: #222;
+        font-family: Tahoma;
+        font-weight: 100;
+    }
+    h2 {
+        background: #555;
+        color: #fff;
+        margin: 0;
+        }
+    .col_size {
+        width: 25%;
+    }
+    .project {
+        background: #eee;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #000;
+        margin: 0.2%;
+        border: 1px solid black;
+        overflow: hidden;
+        max-width: 24%;
+        min-width: 24%;
+    }
+    .project p {
+        padding: 1%;
+        background: #444;
+        color: #eee;
+        margin:0;
+        white-space:pre;
+    }
+    .project table {
+        width: 100%;
+        text-align: center;
+    }
+    thead tr {
+        background-color: #222;
+        color: #aaa;
+        margin:0;
+        padding: 0;
+    }
+    td {
+        border-left: 1px dashed #888;
+    }
+    tr:nth-child(even) {
+        background: rgba(0,0,0,0.1);
+    }
+    </style>
+  </head>
+<body>
+<header>
+  <h1>{{ display_title }}</h1>
+</header>
+
+{% block body %}
+<div id="projects" class="projects">
+<div class="col_size"></div>
+{% for project in projects if not project.name.startswith('~') and not project.name.startswith('*') %}
+  <div class="project" id="project_{{ project.id }}">
+    <h2>{{ project.name }}</h2>
+    <p>{{ project.notes }}</p>
+    <table class="tasks">
+    <thead>
+    <tr><th>Who?</th><th>What?</th><th>When?</th><th>Where?</th></tr>
+    </thead>
+    <tbody>
+    {% for task in project.tasks if task.due_on and not task.completed %}
+        {% if loop.index < 4 %}
+        <tr class="task">
+        <td>{% if task.assignee %}{{users[task.assignee.id].get('name','-')}}{% endif %}</td><td>{{task.name}}</td>
+        <td>{{ task.due_on}}</td><td>{{task.assignee_status}}</td>
+        </tr>
+        {% endif %}
+    {% else %}
+        <script defer>document.getElementById("project_{{project.id}}").remove()</script>
+        <tr><td colspan=4>None!!</td></tr>
+    {% endfor %}
+    </tbody>
+    </table>
+  </div>
+{% endfor %}
+{% endblock %}
+</div>
+
+<ul id="flashed_notices">
+{% for msg in get_flashed_messages() %}
+  <li>{{ msg }}</li>
+{% endfor %}
+</ul>
+<footer>
+</footer>
+{% block end_of_page_javascript %}
+  <!-- jquery, ga, whatever goes here. -->
+<script type="text/javascript" src="{{ url_for('static',filename='masonry.min.js') }}"></script>
+<script>
+var c = document.getElementById('projects'),
+    m = new Masonry(c, {columnWidth:'.col_size',itemSelector:'.project'});
+setTimeout(function(){location.reload();},60000);
+</script>
+{% endblock %}
+</body>
+</html>
