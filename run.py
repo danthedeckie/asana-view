@@ -1,7 +1,7 @@
 #!.virtualenv/bin/python
 # -*- coding: utf-8 -*-
 '''
-    Simple run script for streetsign_server.
+    Simple run script
 
     Usage:
 
@@ -26,7 +26,7 @@ sys.setdefaultencoding('utf-8')
 
 # Load the app:
 
-from streetsign_server import app
+from app import app
 
 # And start the correct server
 

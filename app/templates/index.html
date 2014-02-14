@@ -8,7 +8,7 @@
     <style>
     body {
         background: #222;
-        font-family: Tahoma;
+        font-family: Tahoma, Sans-Serif;
         font-weight: 100;
     }
     h2 {
@@ -29,6 +29,9 @@
         max-width: 24%;
         min-width: 24%;
     }
+    .nada {
+	display: none;
+	}
     .project p {
         padding: 1%;
         background: #444;
@@ -52,7 +55,20 @@
     tr:nth-child(even) {
         background: rgba(0,0,0,0.1);
     }
+    tr.today {
+        background: #6a2;
+        color: white;
+    }
+    tr.inbox {
+        background: #25a;
+        color: white;
+    }
+    tr.later {
+        color: #666;
+        font-style: italic; 
+    }
     </style>
+<script>var hide=[];</script>
   </head>
 <body>
 <header>
@@ -65,7 +81,6 @@
 {% for project in projects if not project.name.startswith('~') and not project.name.startswith('*') %}
   <div class="project" id="project_{{ project.id }}">
     <h2>{{ project.name }}</h2>
-    <p>{{ project.notes }}</p>
     <table class="tasks">
     <thead>
     <tr><th>Who?</th><th>What?</th><th>When?</th><th>Where?</th></tr>
@@ -73,13 +88,13 @@
     <tbody>
     {% for task in project.tasks if task.due_on and not task.completed %}
         {% if loop.index < 4 %}
-        <tr class="task">
+        <tr class="task {{task.assignee_status}}" >
         <td>{% if task.assignee %}{{users[task.assignee.id].get('name','-')}}{% endif %}</td><td>{{task.name}}</td>
         <td>{{ task.due_on}}</td><td>{{task.assignee_status}}</td>
         </tr>
         {% endif %}
     {% else %}
-        <script defer>document.getElementById("project_{{project.id}}").remove()</script>
+        <script>hide.push("project_{{project.id}}");</script>
         <tr><td colspan=4>None!!</td></tr>
     {% endfor %}
     </tbody>
@@ -100,6 +115,12 @@
   <!-- jquery, ga, whatever goes here. -->
 <script type="text/javascript" src="{{ url_for('static',filename='masonry.min.js') }}"></script>
 <script>
+var i=0, x = null;
+for(i=0;i<hide.length;i++){
+	x = document.getElementById(hide[i]);
+	x.className='nada';
+}
+
 var c = document.getElementById('projects'),
     m = new Masonry(c, {columnWidth:'.col_size',itemSelector:'.project'});
 setTimeout(function(){location.reload();},60000);
