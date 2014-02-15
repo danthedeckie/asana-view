@@ -1,7 +1,9 @@
-from flask import render_template, url_for, request
+from flask import render_template, url_for, request, json
 from simpleasana import SimpleAsana, list_to_dict
 from app import app
 from sqlcache import SqliteCache
+from datetime import datetime, timedelta
+
 
 class CachedAsana(object):
     def __init__(self, api_key, db_name):
@@ -29,26 +31,70 @@ class CachedAsana(object):
 @app.route('/index.html')
 def index():
 
+    if not app.config['API_KEY']:
+        return '<h1>You need to set an API_KEY in your config.py.</h1>'
+
     a = CachedAsana(app.config['API_KEY'], 'cache.db')
 
-    teams = list_to_dict(a.teams())
+    teams = a.teams(as_type='dict')
 
-    users = list_to_dict(a.users(opt_fields='name,photo'))
-    print users
+    users = a.users(opt_fields='name,photo', as_type='dict')
 
-    projects = a.workspace_projects(app.config['WORKSPACE'], opt_fields='name,team,archived,notes')
+    if not 'WORKSPACE' in app.config:
+        return '<h1>Workspace not specified.</h1>' + \
+            json.dumps(a.workspaces())
+
+    projects = a.workspace_projects(app.config['WORKSPACE'],
+                                    opt_fields='name,team,archived,notes')
 
     for p in [p for p in projects if not p['archived']]:
         p['team'] = teams[p['team']['id']]
-        if p['team']['name'] == 'OMNIvision Videos':
-            p['tasks'] = a.project_tasks(p['id'], opt_fields='name,completed,due_on,completed_at,assignee,assignee_status')
+        if p['team']['name'] == app.config['TEAM_NAME']:
+            p['tasks'] = a.project_tasks(p['id'],
+                                         opt_fields='name,completed,'
+                                                    'due_on,completed_at,'
+                                                    'assignee,assignee_status')
 
     return render_template('index.html',
         users=users,
         projects=[p for p in projects if 'tasks' in p])
 
-@app.route('/project/<int:pid>')
-def project(pid):
-    a = asana.AsanaAPI(app.config['API_KEY'])
-    return render_template('project.html')
+@app.route('/jobs')
+def jobs():
+    now = datetime.now()
 
+    a = CachedAsana(app.config['API_KEY'],'cache.db')
+
+    teams = a.teams(as_type='dict')
+    users = a.users(as_type='dict', opt_fields='name,photo')
+
+    projects = a.workspace_projects(app.config['WORKSPACE'],
+                                    as_type='dict',
+                                    opt_fields='name,team,archived,notes')
+
+    tasks=[]
+
+    for p in [p for p in projects if not p['archived']]:
+        ts = a.project_tasks(p['id'],
+                             opt_fields='name,completed,due_on,completed_at,'
+                                        'assignee,assignee_status')
+        for t in [t for t in ts if not t['completed']]:
+            if t['assignee']:
+                if t['due_on']:
+                    t['due_on'] = datetime.strptime(t['due_on'],"%Y-%m-%d")
+                    if t['due_on'] < now:
+                        t['time_class'] = 'past'
+                    elif t['due_on'] < now + timedelta(days=2):
+                        t['time_class'] = 'soon'
+                    else:
+                        t['time_class'] = 'sometime'
+                else:
+                    t['time_class'] = 'not_set'
+
+                t['project'] = p
+                tasks.append(t)
+        #tasks += ts
+
+    return render_template('jobs.html',
+                            users=users,
+                            tasks=tasks)

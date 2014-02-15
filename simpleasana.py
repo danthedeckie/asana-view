@@ -32,15 +32,21 @@ class SimpleAsana(object):
             print r
             print r.url
             print r.text
-            raise e
+            raise AsanaError(r.text)
 
     def user(self, uid, **kwargs):
         return self._get_asana('users/{}', uid, **kwargs)
 
-    def users(self, **kwargs):
+    def users(self, as_type=None, **kwargs):
+        if as_type == 'dict':
+            return list_to_dict(self.users(**kwargs))
+
         return self._get_asana('users', **kwargs)
 
-    def teams(self, **kwargs):
+    def teams(self, as_type=None, **kwargs):
+        if as_type == 'dict':
+            return list_to_dict(self.teams(**kwargs))
+
         orgs = [o for o in self.organizations()
                 if o['name'] != 'Personal Projects']
         if len(orgs) == 0:
@@ -57,7 +63,10 @@ class SimpleAsana(object):
                                            **kwargs)
                 if w['is_organization'] == True]
 
-    def projects(self, **kwargs):
+    def projects(self, as_type=None, **kwargs):
+        if as_type == 'dict':
+            return list_to_dict(self.projects(**kwargs))
+
         return self._get_asana('projects', **kwargs)
 
     def project_tasks(self, project, **kwargs):
