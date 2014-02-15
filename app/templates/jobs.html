@@ -61,10 +61,10 @@
 {% block body %}
 <div id="projects" class="projects">
 <div class="col_size"></div>
-{% for task in tasks if task.time_class != 'not_set' %}
+{% for task in tasks|sort(attribute='due_on') if task.time_class != 'not_set' and task.due_on %}
   <div class="task {{task.time_class}}" id="task_{{ task.id }}">
     <h2>{{ task.name }}</h2>
-    <h3>{{ task.project.name}}|{{ users[task.assignee.id].name }}</h3>
+    <h3>{{ task.project.name}}|{{ users[task.assignee.id].name.split(' ')[0] }}</h3>
   </div>
 {% endfor %}
 </div>

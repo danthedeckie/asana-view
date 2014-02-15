@@ -16,13 +16,14 @@ class CachedAsana(object):
             the real function '''
 
         def cached_or_real(*vargs, **kwargs):
+            cachetime = kwargs.pop('cachetime', 300)
             cachename = name + str(hash(str(vargs))) + str(hash(str(kwargs)))
             cached = self.c.get(cachename)
             if cached:
                 return cached
             else:
                 real = getattr(self.a, name)(*vargs, **kwargs)
-                self.c.set(cachename, real, 300)
+                self.c.set(cachename, real, cachetime)
                 return real
 
         return cached_or_real
@@ -36,21 +37,21 @@ def index():
 
     a = CachedAsana(app.config['API_KEY'], 'cache.db')
 
-    teams = a.teams(as_type='dict')
+    teams = a.teams(as_type='dict',cachetime=15000)
 
-    users = a.users(opt_fields='name,photo', as_type='dict')
+    users = a.users(opt_fields='name,photo', as_type='dict', cachetime=6000)
 
     if not 'WORKSPACE' in app.config:
         return '<h1>Workspace not specified.</h1>' + \
             json.dumps(a.workspaces())
 
-    projects = a.workspace_projects(app.config['WORKSPACE'],
+    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
                                     opt_fields='name,team,archived,notes')
 
     for p in [p for p in projects if not p['archived']]:
         p['team'] = teams[p['team']['id']]
         if p['team']['name'] == app.config['TEAM_NAME']:
-            p['tasks'] = a.project_tasks(p['id'],
+            p['tasks'] = a.project_tasks(p['id'], cachetime=600,
                                          opt_fields='name,completed,'
                                                     'due_on,completed_at,'
                                                     'assignee,assignee_status')
@@ -65,17 +66,17 @@ def jobs():
 
     a = CachedAsana(app.config['API_KEY'],'cache.db')
 
-    teams = a.teams(as_type='dict')
-    users = a.users(as_type='dict', opt_fields='name,photo')
+    teams = a.teams(as_type='dict', cachetime=15000)
+    users = a.users(as_type='dict', opt_fields='name,photo', cachetime=6000)
 
-    projects = a.workspace_projects(app.config['WORKSPACE'],
+    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
                                     as_type='dict',
                                     opt_fields='name,team,archived,notes')
 
     tasks=[]
 
     for p in [p for p in projects if not p['archived']]:
-        ts = a.project_tasks(p['id'],
+        ts = a.project_tasks(p['id'], cachetime=600,
                              opt_fields='name,completed,due_on,completed_at,'
                                         'assignee,assignee_status')
         for t in [t for t in ts if not t['completed']]:
@@ -88,11 +89,9 @@ def jobs():
                         t['time_class'] = 'soon'
                     else:
                         t['time_class'] = 'sometime'
-                else:
-                    t['time_class'] = 'not_set'
+                    t['project'] = p
 
-                t['project'] = p
-                tasks.append(t)
+                    tasks.append(t)
         #tasks += ts
 
     return render_template('jobs.html',

@@ -17,10 +17,21 @@ clone this into the directory you want to use for the project, and type
 
 and you're going!
 
+## Config:
+
+You need to set values in config.py:
+
+    API_KEY='...'
+    WORKSPACE='...'
+    TEAM_NAME'...'
+
+One day there will be magic to list those (other than the API key) for you.
+
+## To Run it:
+
 To run the app with the flask autoreloading magic use
 
     ./run.py
-
 
 For production, try:
 
