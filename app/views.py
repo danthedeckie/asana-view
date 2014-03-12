@@ -1,9 +1,9 @@
-from flask import render_template, url_for, request, json
+from flask import render_template, url_for, request, json, jsonify
 from simpleasana import SimpleAsana, list_to_dict
 from app import app
 from sqlcache import SqliteCache
 from datetime import datetime, timedelta
-
+import multiprocessing
 
 class CachedAsana(object):
     def __init__(self, api_key, db_name):
@@ -60,6 +60,33 @@ def index():
         users=users,
         projects=[p for p in projects if 'tasks' in p])
 
+def get_project_tasks(p):
+    a = CachedAsana(app.config['API_KEY'], 'cache.db')
+    now = datetime.now()
+
+    ts = a.project_tasks(p['id'], cachetime=600,
+                         opt_fields='name,completed,due_on,completed_at,'
+                                    'assignee,assignee_status')
+
+    tasks = []
+
+    for t in [t for t in ts if not t['completed']]:
+            if t['assignee']:
+                if t['due_on']:
+                    t['due_on'] = datetime.strptime(t['due_on'],"%Y-%m-%d")
+                    if t['due_on'] < now:
+                        t['time_class'] = 'past'
+                    elif t['due_on'] < now + timedelta(days=2):
+                        t['time_class'] = 'soon'
+                    else:
+                        t['time_class'] = 'sometime'
+                    t['project'] = p
+
+                    tasks.append(t)
+
+    return tasks
+
+
 @app.route('/jobs')
 def jobs():
     now = datetime.now()
@@ -75,25 +102,51 @@ def jobs():
 
     tasks=[]
 
-    for p in [p for p in projects if not p['archived']]:
-        ts = a.project_tasks(p['id'], cachetime=600,
-                             opt_fields='name,completed,due_on,completed_at,'
-                                        'assignee,assignee_status')
-        for t in [t for t in ts if not t['completed']]:
-            if t['assignee']:
-                if t['due_on']:
-                    t['due_on'] = datetime.strptime(t['due_on'],"%Y-%m-%d")
-                    if t['due_on'] < now:
-                        t['time_class'] = 'past'
-                    elif t['due_on'] < now + timedelta(days=2):
-                        t['time_class'] = 'soon'
-                    else:
-                        t['time_class'] = 'sometime'
-                    t['project'] = p
+    #for p in [p for p in projects if not p['archived']]:
+    #    tasks += get_project_tasks(p)
+    
+    pool = multiprocessing.Pool(processes=21)
 
-                    tasks.append(t)
-        #tasks += ts
+
+    lists = pool.map(get_project_tasks,
+                                [p for p in projects if not p['archived']])
+
+    for ts in lists:
+        tasks += ts
 
     return render_template('jobs.html',
                             users=users,
                             tasks=tasks)
+
+@app.route('/async_jobs')
+def async_jobs():
+    a = CachedAsana(app.config['API_KEY'],'cache.db')
+
+    teams = a.teams(as_type='dict', cachetime=15000)
+    users = a.users(as_type='dict', opt_fields='name,photo', cachetime=6000)
+
+    return render_template('a_jobs.html', users=users)
+
+@app.route('/api/jobs')
+def api_jobs():
+    now = datetime.now()
+
+    a = CachedAsana(app.config['API_KEY'],'cache.db')
+
+    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
+                                    as_type='dict',
+                                    opt_fields='name,team,archived,notes')
+    tasks=[]
+
+    pool = multiprocessing.Pool(processes=21)
+
+    lists = pool.map(get_project_tasks,
+                                [p for p in projects if not p['archived']])
+
+    pool.close()
+
+    for ts in lists:
+        tasks += ts
+
+    return jsonify({"tasks": tasks})
+
