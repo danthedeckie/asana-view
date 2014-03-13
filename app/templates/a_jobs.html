@@ -1,116 +1,28 @@
 <!doctype html>
 <html>
   <head>
-    <title>{% block title %}TODO: TITLE{% endblock %}</title>
-    {% block htmlhead %}
+    <title>Tasks Overview</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-    {% endblock %}
-    <style>
-    body {
-        background: #222;
-        font-family: Tahoma, Sans-Serif;
-        font-weight: 100;
-    }
-    h2,h3 {
-        color: #fff;
-        margin: 0;
-        }
-    .col_size {
-        width: 25%;
-    }
-    .task {
-        background: #333;
-        color: #777;
-        border-radius: 10px;
-        box-shadow: 0 0 10px #000;
-        margin: 0.2%;
-        border: 1px solid black;
-        overflow: hidden;
-        max-width: 24%;
-        min-width: 24%;
-        float: left;
-    }
-    .nada {
-        display: none;
-	}
-    .task.past{
-        background: red;
-    }
-    .task.soon{
-        background: blue;
-    }
-    tr.today {
-        background: #6a2;
-        color: white;
-    }
-    tr.inbox {
-        background: #25a;
-        color: white;
-    }
-    tr.later {
-        color: #666;
-        font-style: italic; 
-    }
-    </style>
-<script>var hide=[];</script>
   </head>
 <body>
 <header>
   <h1>{{ display_title }}</h1>
 </header>
-
-{% block body %}
 <div id="projects" class="projects">
-<div class="col_size"></div>
-</div>
-{% endblock %}
+<div class="col_size"></div></div>
 
-<ul id="flashed_notices">
-{% for msg in get_flashed_messages() %}
-  <li>{{ msg }}</li>
-{% endfor %}
-</ul>
-<footer>
-</footer>
-{% block end_of_page_javascript %}
-  <!-- jquery, ga, whatever goes here. -->
+<script>
+__JOBS_API__="{{ url_for('api_jobs') }}";
+__SOUND__="{{ url_for('static', filename='fanfare.mp3') }}";
+    // Recorded by John Stracke, Attribution 3.0 licence.
+    // http://soundbible.com/1823-Winning-Triumphal-Fanfare.html
+</script>
 <script type="text/javascript" src="{{ url_for('static',filename='masonry.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static',filename='jquery.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static',filename='jquery.isotope.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static',filename='main.js') }}"></script>
 <script>
-var _jobs = {};
-
-function job_html(job) {
-    return ( '<div class="task ' + job.time_class + '" id="' + job.id + '">' +
-                 '<h2>' + job.name + '</h2>' +
-                 '<h3>' + job.project.name + '</h3>' +
-             '</div>' );
-}
-
-
-function get_latest() {
-    $.get("{{ url_for('api_jobs') }}", function(data) {
-        var i, x, current, id;
-        for(i=0;i<data['tasks'].length;i++) {
-            current = data['tasks'][i];
-            id = current.id + '_' + current.project.id;
-            if (_jobs.hasOwnProperty(id)) {
-                if ( JSON.stringify(current) !== JSON.stringify(_jobs[id].data) ) {
-                    console.log('does NOT match');
-                    console.log(JSON.stringify(current));
-                    console.log(JSON.stringify(_jobs[id].data));
-                }
-            } else {
-                x = $(job_html(current));
-                _jobs[id] = { data: current, el: x };
-
-                $('#projects').append(x);
-            }
-        }
-        setTimeout(get_latest, 5000);
-    });
-}
 get_latest();
 </script>
-{% endblock %}
 </body>
 </html>

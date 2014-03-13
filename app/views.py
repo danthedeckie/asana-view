@@ -1,67 +1,12 @@
 from flask import render_template, url_for, request, json, jsonify
 from simpleasana import SimpleAsana, list_to_dict
 from app import app
-from sqlcache import SqliteCache
 from datetime import datetime, timedelta
-import multiprocessing
-
-class CachedAsana(object):
-    def __init__(self, api_key, db_name):
-        self.a = SimpleAsana(api_key)
-        self.c = SqliteCache(db_name)
-
-    def __getattr__(self, name):
-        ''' when a function is requested, instead return a 'fake' function
-            that checks in the cache first, before actually trying to run
-            the real function '''
-
-        def cached_or_real(*vargs, **kwargs):
-            cachetime = kwargs.pop('cachetime', 300)
-            cachename = name + str(hash(str(vargs))) + str(hash(str(kwargs)))
-            cached = self.c.get(cachename)
-            if cached:
-                return cached
-            else:
-                real = getattr(self.a, name)(*vargs, **kwargs)
-                self.c.set(cachename, real, cachetime)
-                return real
-
-        return cached_or_real
-
-@app.route('/')
-@app.route('/index.html')
-def index():
-
-    if not app.config['API_KEY']:
-        return '<h1>You need to set an API_KEY in your config.py.</h1>'
-
-    a = CachedAsana(app.config['API_KEY'], 'cache.db')
-
-    teams = a.teams(as_type='dict',cachetime=15000)
-
-    users = a.users(opt_fields='name,photo', as_type='dict', cachetime=6000)
-
-    if not 'WORKSPACE' in app.config:
-        return '<h1>Workspace not specified.</h1>' + \
-            json.dumps(a.workspaces())
-
-    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
-                                    opt_fields='name,team,archived,notes')
-
-    for p in [p for p in projects if not p['archived']]:
-        p['team'] = teams[p['team']['id']]
-        if p['team']['name'] == app.config['TEAM_NAME']:
-            p['tasks'] = a.project_tasks(p['id'], cachetime=600,
-                                         opt_fields='name,completed,'
-                                                    'due_on,completed_at,'
-                                                    'assignee,assignee_status')
-
-    return render_template('index.html',
-        users=users,
-        projects=[p for p in projects if 'tasks' in p])
+import gevent
+from gevent.pool import Pool
 
 def get_project_tasks(p):
-    a = CachedAsana(app.config['API_KEY'], 'cache.db')
+    a = SimpleAsana(app.config['API_KEY'])
     now = datetime.now()
 
     ts = a.project_tasks(p['id'], cachetime=600,
@@ -86,67 +31,42 @@ def get_project_tasks(p):
 
     return tasks
 
-
-@app.route('/jobs')
-def jobs():
-    now = datetime.now()
-
-    a = CachedAsana(app.config['API_KEY'],'cache.db')
-
-    teams = a.teams(as_type='dict', cachetime=15000)
-    users = a.users(as_type='dict', opt_fields='name,photo', cachetime=6000)
-
-    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
-                                    as_type='dict',
-                                    opt_fields='name,team,archived,notes')
-
-    tasks=[]
-
-    #for p in [p for p in projects if not p['archived']]:
-    #    tasks += get_project_tasks(p)
-    
-    pool = multiprocessing.Pool(processes=21)
-
-
-    lists = pool.map(get_project_tasks,
-                                [p for p in projects if not p['archived']])
-
-    for ts in lists:
-        tasks += ts
-
-    return render_template('jobs.html',
-                            users=users,
-                            tasks=tasks)
-
+@app.route('/')
+@app.route('/index.html')
 @app.route('/async_jobs')
 def async_jobs():
-    a = CachedAsana(app.config['API_KEY'],'cache.db')
+    a = SimpleAsana(app.config['API_KEY'])
 
-    teams = a.teams(as_type='dict', cachetime=15000)
-    users = a.users(as_type='dict', opt_fields='name,photo', cachetime=6000)
+    t = gevent.spawn( a.teams, as_type='dict' ) 
+    u = gevent.spawn( a.users, as_type='dict', opt_fields='name,photo')
 
-    return render_template('a_jobs.html', users=users)
+    gevent.joinall([t,u], 10)
+    teams = t.value
+    users = u.value
+
+    return render_template('a_jobs.html', users=users, teams=teams)
 
 @app.route('/api/jobs')
 def api_jobs():
-    now = datetime.now()
+    try:
+        now = datetime.now()
 
-    a = CachedAsana(app.config['API_KEY'],'cache.db')
+        a = SimpleAsana(app.config['API_KEY'])
 
-    projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
-                                    as_type='dict',
-                                    opt_fields='name,team,archived,notes')
-    tasks=[]
+        projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
+                                        as_type='dict',
+                                        opt_fields='name,team,archived,notes')
+        tasks=[]
 
-    pool = multiprocessing.Pool(processes=21)
+        pool = Pool(31)
 
-    lists = pool.map(get_project_tasks,
-                                [p for p in projects if not p['archived']])
+        lists = pool.map(get_project_tasks,
+                         [p for p in projects if not p['archived']])
 
-    pool.close()
 
-    for ts in lists:
-        tasks += ts
+        for ts in lists:
+            tasks += ts
 
-    return jsonify({"tasks": tasks})
-
+        return jsonify({"tasks": tasks})
+    except Exception as e:
+        return str(e)

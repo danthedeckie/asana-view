@@ -31,10 +31,17 @@ from app import app
 # And start the correct server
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2 and sys.argv[1] == 'waitress':
-        print("'Production' Server with Waitress.")
-        from waitress import serve
-        serve(app, host=__HOST__, port=__PORT__, threads=__THREADS__)
+    if len(sys.argv) == 2:
+        if sys.argv[1] == 'waitress':
+            print("'Production' Server with Waitress.")
+            from waitress import serve
+            serve(app, host=__HOST__, port=__PORT__, threads=__THREADS__)
+        elif sys.argv[1] == 'gevent':
+            print("Gevent server")
+            from gevent.wsgi import WSGIServer
+            import gevent.monkey
+            gevent.monkey.patch_all()
+            WSGIServer(('', __PORT__), app).serve_forever()
     else:
         print("Starting Development Server...")
         app.run(host=__HOST__, port=__PORT__, debug = True)
