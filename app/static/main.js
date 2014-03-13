@@ -19,9 +19,9 @@ function init_isotope() {
         getSortData:{
             class: function(e){
                 var fullclass = e.attr('class');
-                if (fullclass.contains('past'))
+                if (fullclass.indexOf('past')>-1)
                     return 0;
-                else if (fullclass.contains('soon'))
+                else if (fullclass.indexOf('soon')>-1)
                     return 1;
                 else
                     return 2;
