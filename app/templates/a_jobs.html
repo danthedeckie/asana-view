@@ -13,16 +13,21 @@
 
 <script>
 __JOBS_API__="{{ url_for('api_jobs') }}";
+//__JOBS_API__="{{ url_for('static', filename='jobs.json') }}";
 __SOUND__="{{ url_for('static', filename='fanfare.mp3') }}";
     // Recorded by John Stracke, Attribution 3.0 licence.
     // http://soundbible.com/1823-Winning-Triumphal-Fanfare.html
+
+__USERS__={{ users | tojson | safe }};
 </script>
 <script type="text/javascript" src="{{ url_for('static',filename='masonry.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static',filename='jquery.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static',filename='jquery.isotope.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static',filename='main.js') }}"></script>
 <script>
+init_isotope();
 get_latest();
+setTimeout(function() { location.reload(); }, 3600000);
 </script>
 </body>
 </html>
