@@ -29,13 +29,9 @@ One day there will be magic to list those (other than the API key) for you.
 
 ## To Run it:
 
-To run the app with the flask autoreloading magic use
+To run the app:
 
     ./run.py
-
-For production, try:
-
-    ./run.py waitress
 
 ## pre-commit hook
 There is the [pre-commit script by Sebastian Dahlgren](https://github.com/sebdah/git-pylint-commit-hook) in the .setup/hooks/ folder, which will run pylint on python scripts to check they are valid before you commit them. The setup.sh script will copy this into your .git/hooks by default.
