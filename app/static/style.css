@@ -43,6 +43,7 @@ a:active {
 .task .details {
     float: left;
     width: 68%;
+    min-height: 6em;
 }
 .nada {
     display: none;

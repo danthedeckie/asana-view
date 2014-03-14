@@ -8,6 +8,7 @@ from gevent.pool import Pool
 def get_project_tasks(p):
     a = SimpleAsana(app.config['API_KEY'])
     now = datetime.now()
+    soon = now + timedelta(days=6)
 
     ts = a.project_tasks(p['id'], cachetime=600,
                          opt_fields='name,completed,due_on,completed_at,'
@@ -21,7 +22,7 @@ def get_project_tasks(p):
                     t['due_on'] = datetime.strptime(t['due_on'],"%Y-%m-%d")
                     if t['due_on'] < now:
                         t['time_class'] = 'past'
-                    elif t['due_on'] < now + timedelta(days=2):
+                    elif t['due_on'] < soon:
                         t['time_class'] = 'soon'
                     else:
                         t['time_class'] = 'sometime'

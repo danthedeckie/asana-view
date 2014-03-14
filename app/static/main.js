@@ -4,34 +4,28 @@
 var _jobs = {};
 //    _sound = new Audio(__SOUND__);
 
+function sortjob(job){
+    var total = 0;
+    if (job.time_class == 'past')
+        return 'a' + Date.parse(job.due_on);
+    else if (job.time_class == 'soon')
+        return 'b' + Date.parse(job.due_on);
+    else if (job.due_on) 
+        return 'c' + Date.parse(job.due_on);
+    else
+        return 'd';
+}
+
+
 
 function job_html(job) {
-    return ( '<div class="task ' + job.time_class + '" id="' + job.id + '">' +
+    return ( '<div class="task ' + job.time_class + '" id="' + job.id + '" data-sortpos="'+sortjob(job)+'">' +
                  '<h1>' + __USERS__[job.assignee.id].name.split(' ')[0] + '</h1>' +
                  '<div class="details">' +
                      '<h2>' + job.name + '</h2>' +
                      '<h3>' + job.project.name + '</h3>' +
              '</div></div>' );
 }
-
-function init_isotope() {
-    var projects = $('#projects');
-
-    projects.isotope({
-        animationEngine: 'css', // None...
-        getSortData:{
-            class: function(e){
-                var fullclass = e.attr('class');
-                if (fullclass.indexOf('past')>-1)
-                    return 'a' + e.text();
-                else if (fullclass.indexOf('soon')>-1)
-                    return 'b';
-                else
-                    return 'c';
-                }
-            },
-        sortBy:'class'});
-};
 
 function get_latest() {
     $.getJSON(__JOBS_API__ + "?" + Date.now() , function(data) {
@@ -68,12 +62,13 @@ function get_latest() {
 
                         _jobs[id].data = current;
 
-                        projects.isotope('remove', _jobs[id].el);
+                        _jobs[id].el.remove();
 
                         x = $(job_html(current));
                         _jobs[id].el = x;
 
-                        projects.isotope('insert', x);
+                        //projects.isotope('insert', x);
+                        projects.append(x);
                         //to_add.push(x);
                     }
                 } else {
@@ -82,9 +77,8 @@ function get_latest() {
                     x = $(job_html(current));
                     _jobs[id] = { data: current, el: x };
 
-                    //$('#projects').append(x);
-                     projects.isotope('insert', x);
-                    //projects.append(x);
+                    // projects.isotope('insert', x);
+                    projects.append(x);
                 }
             }
 
@@ -93,12 +87,15 @@ function get_latest() {
             window.j = _jobs;
 
             for (i=0; i< to_remove.length; i++) {
-                projects.isotope('remove', _jobs[to_remove[i]].el);
+                //projects.isotope('remove', _jobs[to_remove[i]].el);
+                _jobs[to_remove[i]].el.remove();
                 delete _jobs[to_remove[i]];
 
             }
 
-            projects.isotope('reLayout');
+            //projects.isotope('reLayout');
+            $('#projects .task').tsort({'order':'asc', attr:'data-sortpos'});
+
         } catch (e) {
             console.log(e);
         }
@@ -109,5 +106,5 @@ function get_latest() {
 
 // exports:
 window.get_latest = get_latest;
-window.init_isotope = init_isotope;
+//window.init_isotope = init_isotope;
 })();
