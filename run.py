@@ -35,5 +35,5 @@ from app import app
 if __name__ == '__main__':
     print("Gevent server")
     gevent.monkey.patch_all()
-    WSGIServer(('', __PORT__), app).serve_forever()
+    WSGIServer(('0.0.0.0', __PORT__), app).serve_forever()
 

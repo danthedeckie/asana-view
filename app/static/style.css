@@ -31,8 +31,8 @@ a:active {
     color: #777;
     margin: 0.2%;
     border: 1px solid #888;
-    overflow: hidden;
-    width: 48%;
+    width: 45%;
+    display: inline-block;
 }
 
 .task h1 {
@@ -41,7 +41,6 @@ a:active {
     width: 30%;
 }
 .task .details {
-    display: block;
     float: left;
     width: 68%;
 }
