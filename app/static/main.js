@@ -108,7 +108,7 @@ function get_latest() {
             console.log('ERROR:', e);
         }
 
-        setTimeout(get_latest, 120000);
+        setTimeout(get_latest, 20000);
     }).fail(function() { setTimeout(get_latest, 120000); });;
 }
 

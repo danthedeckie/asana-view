@@ -6,11 +6,14 @@
 '''
 
 from flask import render_template, jsonify
-from simpleasana import SimpleAsana, get_project_tasks
-from app import app
 import gevent
 from gevent.pool import Pool
+from app import app
 
+if app.config.get('USECACHE', True):
+    from cachedasana import CachedAsana as SimpleAsana, get_project_tasks
+else:
+    from simpleasana import SimpleAsana, get_project_tasks
 
 @app.route('/')
 @app.route('/index.html')

@@ -1,6 +1,7 @@
 ## Asana view.
 
-Simple display of asana tasks for team screens.
+Simple display of asana tasks for team screens.  Simple Python-based web server, which then can be displayed
+on any browser.  We run the server and client on a single raspberry pi computer with a big plasma screen attached.
 
 Written for internal use at [OMNIvision](http://omnivision.om.org), MIT Licence.
 
@@ -30,6 +31,10 @@ Asana-view will then use your 'default' workspace tasks when you run it.
 To choose a different workspace, set `WORKSPACE="..."` in your config.py.
 When you run asana-view without a configured workspace, it will tell you
 what the options are.
+
+By default, Asana-view will cache all requests from asana for about a minute and a half, so that you don't max out your asana requests.  If you want to disable the caching (not recommended), then in your config.py:
+
+    USECACHE=False
 
 ## To Run it:
 
