@@ -1,102 +1,155 @@
 #!.virtualenv/bin/python
+'''
+    simpleasana.py - part of 'asana-view' project
+    -------------------------------------------------------------------
+    A very basic read-only api for the bits of asana that we want to read.
+'''
 
-import config
 import requests
 import json
+from datetime import datetime, timedelta
 
 BASE = 'https://app.asana.com/api/1.0/'
 
 def list_to_dict(list_input, key='id'):
     ''' returns a dict, using the field 'key' from each item in list_input
         as the new dict key. '''
-    d = {}
+
+    new_dict = {}
+
     for item in list_input:
-        d[item[key]] = item
-    return d
+        new_dict[item[key]] = item
+
+    return new_dict
 
 class AsanaError(Exception):
+    ''' An error with talking to Asana '''
     pass
 
 class SimpleAsana(object):
+    ''' Basic API object.  '''
+
     def __init__(self, api_key):
+        ''' set up the API_KEY '''
         self.api_key = api_key
 
     def _get_asana(self, url, *vargs, **kwargs):
-        r = requests.get(BASE + url.format(*vargs),
-                         params=kwargs,
-                         auth=(self.api_key,''))
+        ''' send a request to asana. '''
+
+        req = requests.get(BASE + url.format(*vargs),
+                           params=kwargs,
+                           auth=(self.api_key, ''))
         try:
-            print r.url
-            return json.loads(r.text)['data']
+            print req.url
+            return json.loads(req.text)['data']
         except KeyError as e:
-            print r
-            print r.url
-            print r.text
-            raise AsanaError(r.text)
+            print req
+            print req.url
+            print req.text
+            raise AsanaError(req.text + ':' + str(e))
 
     def user(self, uid, **kwargs):
+        ''' get details about a user '''
+
         return self._get_asana('users/{}', uid, **kwargs)
 
     def users(self, as_type=None, **kwargs):
+        ''' get details about users '''
+
         if as_type == 'dict':
             return list_to_dict(self.users(**kwargs))
 
         return self._get_asana('users', **kwargs)
 
     def teams(self, as_type=None, **kwargs):
+        ''' get details about all teams in this organisation '''
+
         if as_type == 'dict':
             return list_to_dict(self.teams(**kwargs))
 
-        orgs = [o for o in self.organizations()
-                if o['name'] != 'Personal Projects']
+        orgs = [org for org in self.organizations()
+                if org['name'] != 'Personal Projects']
+
         if len(orgs) == 0:
             raise AsanaError('Not part of any organizations!')
 
-        return self._get_asana('organizations/{}/teams', orgs[0]['id'], **kwargs)
+        return self._get_asana('organizations/{}/teams',
+                               orgs[0]['id'], **kwargs)
 
     def workspaces(self, **kwargs):
+        ''' get list of all available workspaces '''
+
         return self._get_asana('workspaces', **kwargs)
 
     def organizations(self, **kwargs):
-        return [w for w in self._get_asana('workspaces',
+        ''' get a list of all available workspaces '''
+
+        return [wksp for wksp in self._get_asana('workspaces',
                                            opt_fields='name,is_organization',
                                            **kwargs)
-                if w['is_organization'] == True]
+                if wksp['is_organization'] == True]
 
     def projects(self, as_type=None, **kwargs):
+        ''' get a list of all available projects '''
+
         if as_type == 'dict':
             return list_to_dict(self.projects(**kwargs))
 
         return self._get_asana('projects', **kwargs)
 
     def project_tasks(self, project, **kwargs):
+        ''' get a list of all tasks within a project '''
+
         return self._get_asana('projects/{}/tasks', project, **kwargs)
 
     def workspace_projects(self, workspace, **kwargs):
+        ''' get a list of all projects within a workspace '''
+
         return self._get_asana('workspaces/{}/projects', workspace, **kwargs)
 
     def workspace_tasks(self, workspace, **kwargs):
+        ''' get a list of all tasks within a workspace '''
+
+        # requires other options, such as assignee...
+
         return self._get_asana('workspaces/{}/tasks', workspace, **kwargs)
 
     def tasks(self, **kwargs):
+        ''' get tasks, with whatever options you ask for '''
+
         return self._get_asana('tasks', **kwargs)
 
 
+def get_project_tasks(api_key, project):
+    '''
+        Given a Project (p), return a list of all tasks in that project,
+        re-parsed, with time_class, etc.
+    '''
 
-if __name__ == '__main__':
-    import config
+    asana = SimpleAsana(api_key)
+    now = datetime.now()
+    soon = now + timedelta(days=6)
 
-    a = SimpleAsana(config.API_KEY)
-    #print a.projects(opt_fields='name,team')
-    teams = list_to_dict(a.teams(), 'id')
+    raw_tasks = asana.project_tasks(project['id'],
+                                    cachetime=600,
+                                    opt_fields='name,completed,due_on,'
+                                               'completed_at,assignee,'
+                                               'assignee_status')
 
-    projects = a.workspace_projects(config.WORKSPACE, opt_fields='name,team')
+    tasks = []
 
-    for p in projects:
-        p['team'] = teams[p['team']['id']]
+    for task in [t for t in raw_tasks if not t['completed']]:
+        if task['assignee']:
+            if task['due_on']:
+                task['due_on'] = datetime.strptime(task['due_on'], "%Y-%m-%d")
+                if task['due_on'] < now:
+                    task['time_class'] = 'past'
+                elif task['due_on'] < soon:
+                    task['time_class'] = 'soon'
+                else:
+                    task['time_class'] = 'sometime'
+                task['project'] = project
 
-    for p in [p for p in projects if p['team']['name'] == 'OMNIvision Videos']:
-        print p['name']
-        print '---------'
-        tasks = a.project_tasks(p['id'], opt_fields='name,team,completed,due_on,completed_at,assignee,assignee_status')
-        print tasks
+                tasks.append(t)
+
+    return tasks

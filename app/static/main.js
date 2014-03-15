@@ -1,3 +1,8 @@
+/*
+    main.js - part of 'asana-view'. (C) 2014 OMNIvision, MIT Licence
+    ----------------------------------------------------------------
+    Pull the data from our asanaview server, display it as HTML.
+*/
 (function () {
 "use strict";
 
@@ -5,6 +10,7 @@ var _jobs = {};
 //    _sound = new Audio(__SOUND__);
 
 function sortjob(job){
+    // returns a string which can be used for sorting each job sensibly.
     var total = 0;
     if (job.time_class == 'past')
         return 'a' + Date.parse(job.due_on);
@@ -19,15 +25,22 @@ function sortjob(job){
 
 
 function job_html(job) {
-    return ( '<div class="task ' + job.time_class + '" id="' + job.id + '" data-sortpos="'+sortjob(job)+'">' +
-                 '<h1>' + __USERS__[job.assignee.id].name.split(' ')[0] + '</h1>' +
+    // HTML Template.
+    console.log(job.name);
+    return ( '<div class="task ' + job.time_class + '" ' + 
+                  'id="' + job.id + '" ' +
+                  'data-sortpos="'+sortjob(job)+'">' +
+                 ( job.assignee ?  '<h1>' + __USERS__[job.assignee.id].name.split(' ')[0] + '</h1>' : '<h1>???</h1>') +
                  '<div class="details">' +
                      '<h2>' + job.name + '</h2>' +
-                     '<h3>' + job.project.name + '</h3>' +
+                     (job.project ? ('<h3>' + job.project.name + '</h3>'): 'unknown') +
              '</div></div>' );
 }
 
 function get_latest() {
+    // ask the asanaview server for new data, then update all jobs which need updating,
+    // delete any which no longer exist, and add any new ones.
+
     $.getJSON(__JOBS_API__ + "?" + Date.now() , function(data) {
         try {
             var i, x, current, id,
@@ -39,7 +52,8 @@ function get_latest() {
             for(i=0;i<data['tasks'].length;i++) {
                 // loop local vars:
                 current = data['tasks'][i];
-                id = current.id + '_' + current.project.id;
+                id = current.id + '_' + (current.project? current.project.id: 'unknown');
+                console.log(id);
                 
                 // This item is in the new data, so we don't need to remove it:
                 remove_index = to_remove.indexOf(id);
@@ -57,7 +71,6 @@ function get_latest() {
                             (_jobs[id].data.time_class !== 'past')) {
                             // here's a little sarcasm...
                             //_sound.play();
-     
                          }
 
                         _jobs[id].data = current;
@@ -67,9 +80,7 @@ function get_latest() {
                         x = $(job_html(current));
                         _jobs[id].el = x;
 
-                        //projects.isotope('insert', x);
                         projects.append(x);
-                        //to_add.push(x);
                     }
                 } else {
                     // New item:
@@ -77,7 +88,6 @@ function get_latest() {
                     x = $(job_html(current));
                     _jobs[id] = { data: current, el: x };
 
-                    // projects.isotope('insert', x);
                     projects.append(x);
                 }
             }
@@ -87,17 +97,15 @@ function get_latest() {
             window.j = _jobs;
 
             for (i=0; i< to_remove.length; i++) {
-                //projects.isotope('remove', _jobs[to_remove[i]].el);
                 _jobs[to_remove[i]].el.remove();
                 delete _jobs[to_remove[i]];
 
             }
 
-            //projects.isotope('reLayout');
             $('#projects .task').tsort({'order':'asc', attr:'data-sortpos'});
 
         } catch (e) {
-            console.log(e);
+            console.log('ERROR:', e);
         }
 
         setTimeout(get_latest, 120000);
@@ -106,5 +114,4 @@ function get_latest() {
 
 // exports:
 window.get_latest = get_latest;
-//window.init_isotope = init_isotope;
 })();

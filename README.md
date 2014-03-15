@@ -2,6 +2,8 @@
 
 Simple display of asana stuff for team screens.
 
+Written for internal use at OMNIvision, MIT Licence.
+
 ## Including:
 
 - setup.sh (run this, and sets up everything). Can be run as often as you wish.

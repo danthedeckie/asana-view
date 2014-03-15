@@ -1,73 +1,69 @@
-from flask import render_template, url_for, request, json, jsonify
-from simpleasana import SimpleAsana, list_to_dict
+'''
+    views.py - Part of 'asana-view' project.
+    ---------------------------------------------------------------------
+    Defines the actual views (routes).
+
+'''
+
+from flask import render_template, jsonify
+from simpleasana import SimpleAsana, get_project_tasks
 from app import app
-from datetime import datetime, timedelta
 import gevent
 from gevent.pool import Pool
 
-def get_project_tasks(p):
-    a = SimpleAsana(app.config['API_KEY'])
-    now = datetime.now()
-    soon = now + timedelta(days=6)
-
-    ts = a.project_tasks(p['id'], cachetime=600,
-                         opt_fields='name,completed,due_on,completed_at,'
-                                    'assignee,assignee_status')
-
-    tasks = []
-
-    for t in [t for t in ts if not t['completed']]:
-            if t['assignee']:
-                if t['due_on']:
-                    t['due_on'] = datetime.strptime(t['due_on'],"%Y-%m-%d")
-                    if t['due_on'] < now:
-                        t['time_class'] = 'past'
-                    elif t['due_on'] < soon:
-                        t['time_class'] = 'soon'
-                    else:
-                        t['time_class'] = 'sometime'
-                    t['project'] = p
-
-                    tasks.append(t)
-
-    return tasks
 
 @app.route('/')
 @app.route('/index.html')
 @app.route('/async_jobs')
 def async_jobs():
-    a = SimpleAsana(app.config['API_KEY'])
+    '''
+        The main jobs/tasks overview HTML page.  Very basic, as essentially
+        all it does is load the JS&CSS which does everything else.
+    '''
 
-    t = gevent.spawn( a.teams, as_type='dict' ) 
-    u = gevent.spawn( a.users, as_type='dict', opt_fields='name,photo')
+    asana = SimpleAsana(app.config['API_KEY'])
 
-    gevent.joinall([t,u], 10)
-    teams = t.value
-    users = u.value
+    # Run both requests in parallel, which saves a little time:
+    # (hey, we're in for a penny anyway in terms of gevent...)
+
+    get_teams = gevent.spawn(asana.teams, as_type='dict')
+    get_users = gevent.spawn(asana.users, as_type='dict', opt_fields='name,photo')
+
+    gevent.joinall([get_teams, get_users], 10)
+    teams = get_teams.value
+    users = get_users.value
 
     return render_template('a_jobs.html', users=users, teams=teams)
 
 @app.route('/api/jobs')
 def api_jobs():
+    '''
+        The Main JSON view which gives a list of all tasks in all projects.
+        This route uses a gevent pool go get all the project tasks in parallel
+        (31 at a time), which makes life a lot quicker.  (Down to 7 or 8 seconds
+        load time for us.)
+    '''
     try:
-        now = datetime.now()
+        asana = SimpleAsana(app.config['API_KEY'])
+        my_project_tasks = lambda p: get_project_tasks(app.config['API_KEY'], p)
 
-        a = SimpleAsana(app.config['API_KEY'])
-
-        projects = a.workspace_projects(app.config['WORKSPACE'], cachetime=4000,
+        projects = asana.workspace_projects(
+                                        app.config['WORKSPACE'],
+                                        cachetime=4000,
                                         as_type='dict',
                                         opt_fields='name,team,archived,notes')
-        tasks=[]
+        all_tasks = []
 
         pool = Pool(31)
 
-        lists = pool.map(get_project_tasks,
+        lists = pool.map(my_project_tasks,
                          [p for p in projects if not p['archived']])
 
 
-        for ts in lists:
-            tasks += ts
+        for project_tasks in lists:
+            all_tasks += project_tasks
 
-        return jsonify({"tasks": tasks})
-    except Exception as e:
+        return jsonify({"tasks": all_tasks})
+
+    except Exception as e: # pylint: disable=broad-except
         return str(e)
