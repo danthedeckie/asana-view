@@ -7,6 +7,7 @@
 
 import requests
 import json
+import logging
 from datetime import datetime, timedelta
 
 BASE = 'https://app.asana.com/api/1.0/'
@@ -29,9 +30,10 @@ class AsanaError(Exception):
 class SimpleAsana(object):
     ''' Basic API object.  '''
 
-    def __init__(self, api_key):
-        ''' set up the API_KEY '''
+    def __init__(self, api_key, logger=None):
+        ''' set up the API_KEY and logging '''
         self.api_key = api_key
+        self.logger = logger if logger else logging.getLogger(__name__)
 
     def _get_asana(self, url, *vargs, **kwargs):
         ''' send a request to asana. '''
@@ -40,12 +42,11 @@ class SimpleAsana(object):
                            params=kwargs,
                            auth=(self.api_key, ''))
         try:
-            print req.url
+            self.logger.info('Getting: ' + req.url )
             return json.loads(req.text)['data']
         except KeyError as e:
-            print req
-            print req.url
-            print req.text
+            self.logger.error('Failed to get ' + req.url) 
+            self.logger.error(req.text)
             raise AsanaError(req.text + ':' + str(e))
 
     def user(self, uid, **kwargs):
@@ -131,7 +132,6 @@ def get_project_tasks(api_key, project):
     soon = now + timedelta(days=6)
 
     raw_tasks = asana.project_tasks(project['id'],
-                                    cachetime=600,
                                     opt_fields='name,completed,due_on,'
                                                'completed_at,assignee,'
                                                'assignee_status')
@@ -150,6 +150,6 @@ def get_project_tasks(api_key, project):
                     task['time_class'] = 'sometime'
                 task['project'] = project
 
-                tasks.append(t)
+                tasks.append(task)
 
     return tasks
