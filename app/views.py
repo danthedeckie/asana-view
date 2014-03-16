@@ -7,6 +7,8 @@
 
 import gevent
 from gevent.pool import Pool
+import GreenletProfiler
+
 from app import app
 from simpleapp import render_template
 
@@ -70,3 +72,20 @@ def api_jobs():
 
     except Exception as e: # pylint: disable=broad-except
         return str(e)
+
+@app.route('/start')
+def pstart():
+    GreenletProfiler.set_clock_type('cpu')
+    GreenletProfiler.start()
+    return 'Started <a href="/stop">Stop</a>'
+
+@app.route('/stop')
+def pstop():
+    GreenletProfiler.stop()
+    return 'Stopped. <a href="/details">Details</a>'
+
+@app.route('/details')
+def pdetails():
+    stats = GreenletProfiler.get_func_stats()
+    stats.print_all()
+    return 'Printed.'

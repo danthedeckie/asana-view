@@ -71,7 +71,7 @@ class Application(object):
                    "<pre>%s</pre>" % environ['PATH_INFO']
             
             start_response(status, response_headers)
-            return data
+            return [data]
 
         try:
             data = resp()
@@ -89,14 +89,14 @@ class Application(object):
             response_headers = [('Content-type', content_type)]
 
         start_response(status, response_headers)
-        return data
+        return [data]
 
     def __call__(self, environ, start_response):
         try:
             return self.incoming(environ, start_response)
         except Exception as e:
             start_response('500 Error', [('Content-type', 'text/plain')])
-            return 'Error: %s' % e 
+            return ['Error: %s' % e ]
 
 def render_template(*vargs, **kwargs):
     return 'TEXT'

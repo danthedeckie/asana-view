@@ -6,10 +6,6 @@
     Usage:
 
     ./run.sh
-        (starts the development internal flask server.  FOR DEVELOPMENT ONLY!)
-
-    ./run.sh waitress
-        (starts the server running with the waitress production server)
 '''
 
 # Configuration Options:
@@ -20,6 +16,7 @@ __THREADS__ = 3 # (for waitress, only)
 
 from gevent.wsgi import WSGIServer
 import gevent.monkey
+gevent.monkey.patch_all()
 
 # Initialise unicode:
 import sys
@@ -34,6 +31,5 @@ from app import app
 
 if __name__ == '__main__':
     print("Gevent server")
-    gevent.monkey.patch_all()
     WSGIServer(('0.0.0.0', __PORT__), app).serve_forever()
 
