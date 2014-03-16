@@ -5,10 +5,10 @@
 
 '''
 
-from flask import render_template, jsonify
 import gevent
 from gevent.pool import Pool
 from app import app
+from simpleapp import render_template
 
 if app.config.get('USECACHE', True):
     from cachedasana import CachedAsana as SimpleAsana, get_project_tasks
@@ -66,7 +66,7 @@ def api_jobs():
         for project_tasks in lists:
             all_tasks += project_tasks
 
-        return jsonify({"tasks": all_tasks})
+        return {"tasks": all_tasks}
 
     except Exception as e: # pylint: disable=broad-except
         return str(e)

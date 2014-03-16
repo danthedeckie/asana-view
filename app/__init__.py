@@ -4,11 +4,12 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-from flask import Flask
 import simpleasana
+from simpleapp import Application
+import config
 
-app = Flask(__name__)
-app.config.from_object('config')
+app = Application()
+app.config.from_object(config)
 
 # Check that everything has been set up that we need (API_KEY and WORKSPACE)
 
