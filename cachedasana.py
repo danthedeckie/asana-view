@@ -8,7 +8,7 @@
 #pylint: disable=star-args,too-few-public-methods
 
 import simpleasana
-from simplegcache import get
+from simplegcache import get, Waiting
 
 class CachedAsana(object):
     ''' A version of SimpleAsana that caches all calls in the simplegcache '''
@@ -45,6 +45,9 @@ def get_project_tasks(*vargs, **kwargs):
                 + str(hash(str(vargs))) \
                 + str(hash(str(kwargs)))
 
-    return get(cachename,
-               lambda: simpleasana.get_project_tasks(*vargs, **kwargs),
-               cachetime, 10)
+    try:
+        return get(cachename,
+                   lambda: simpleasana.get_project_tasks(*vargs, **kwargs),
+                   cachetime, 10)
+    except Waiting:
+        return {"error": "waiting"}

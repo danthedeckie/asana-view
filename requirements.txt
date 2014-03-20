@@ -1,4 +1,5 @@
-flask
+espressocup
 pylint
 requests
 gevent
+python-magic

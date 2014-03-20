@@ -8,6 +8,7 @@
 import gevent
 from gevent.pool import Pool
 import GreenletProfiler
+import json
 
 from app import app
 from simpleapp import render_template
@@ -35,10 +36,11 @@ def async_jobs():
     get_users = gevent.spawn(asana.users, as_type='dict', opt_fields='name,photo')
 
     gevent.joinall([get_teams, get_users], 10)
-    teams = get_teams.value
-    users = get_users.value
+    teams = json.dumps(get_teams.value)
+    users = json.dumps(get_users.value)
 
-    return render_template('a_jobs.html', users=users, teams=teams)
+    return render_template('a_jobs.html', users=users, teams=teams,
+                           display_title='Current Jobs')
 
 @app.route('/api/jobs')
 def api_jobs():

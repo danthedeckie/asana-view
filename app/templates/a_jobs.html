@@ -2,30 +2,25 @@
 <html>
   <head>
     <title>Tasks Overview</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link rel="stylesheet" href="/static/style.css" />
   </head>
 <body>
 <header>
-  <h1>{{ display_title }}</h1>
+  <h1>{display_title}</h1>
 </header>
 <div id="projects" class="projects">
 
 <script>
-__JOBS_API__="{{ url_for('api_jobs') }}";
-//__JOBS_API__="{{ url_for('static', filename='jobs.json') }}";
-__SOUND__="{{ url_for('static', filename='fanfare.mp3') }}";
-    // Recorded by John Stracke, Attribution 3.0 licence.
-    // http://soundbible.com/1823-Winning-Triumphal-Fanfare.html
-
-__USERS__={{ users | tojson | safe }};
+__JOBS_API__="/api/jobs";
+__USERS__={users};
 </script>
-<script type="text/javascript" src="{{ url_for('static',filename='jquery.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static',filename='jquery.tinysort.min.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static',filename='main.js') }}"></script>
+<script type="text/javascript" src="/static/jquery.js"></script>
+<script type="text/javascript" src="/static/jquery.tinysort.min.js"></script>
+<script type="text/javascript" src="/static/main.js"></script>
 <script>
 //init_isotope();
 get_latest();
-setTimeout(function() { location.reload(); }, 3600000);
+setTimeout(function() {{ location.reload(); }}, 3600000);
 </script>
 </body>
 </html>
